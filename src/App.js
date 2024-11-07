@@ -1,12 +1,12 @@
 import { BsFillShieldLockFill, BsTelephoneFill } from "react-icons/bs";
 import { CgSpinner } from "react-icons/cg";
-
 import OtpInput from "otp-input-react";
 import { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { auth } from "./firebase.config";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import axios from "axios";
 import { toast, Toaster } from "react-hot-toast";
 
 const App = () => {
@@ -25,7 +25,6 @@ const App = () => {
           callback: (response) => {
             onSignup();
           },
-          "expired-callback": () => {},
         },
         auth
       );
@@ -37,7 +36,6 @@ const App = () => {
     onCaptchVerify();
 
     const appVerifier = window.recaptchaVerifier;
-
     const formatPh = "+" + ph;
 
     signInWithPhoneNumber(auth, formatPh, appVerifier)
@@ -45,28 +43,43 @@ const App = () => {
         window.confirmationResult = confirmationResult;
         setLoading(false);
         setShowOTP(true);
-        toast.success("OTP sended successfully!");
+        toast.success("OTP sent successfully!");
       })
       .catch((error) => {
-        console.log(error);
+        console.error(error);
         setLoading(false);
       });
   }
 
-  function onOTPVerify() {
+  async function onOTPVerify() {
     setLoading(true);
-    window.confirmationResult
-      .confirm(otp)
-      .then(async (res) => {
-        console.log(res);
-        setUser(res.user);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.log(err);
-        setLoading(false);
-      });
+    try {
+      const result = await window.confirmationResult.confirm(otp);
+      const { phoneNumber } = result.user;
+
+      // Call your backend to authenticate
+      const response = await axios.post(
+        "https://api.proleverageadmin.in/api/users/auth/firebaselogin",
+        { phoneNumber }
+      );
+
+      // Save JWT token and phone number in localStorage
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("phoneNumber", phoneNumber);
+
+      setUser(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+      toast.error("Invalid OTP");
+    }
   }
+
+  const token = localStorage.getItem("token");
+  const phoneNumber = localStorage.getItem("phoneNumber");
+
+  console.log("token", token, phoneNumber);
 
   return (
     <section className="bg-emerald-500 flex items-center justify-center h-screen">
@@ -75,12 +88,12 @@ const App = () => {
         <div id="recaptcha-container"></div>
         {user ? (
           <h2 className="text-center text-white font-medium text-2xl">
-            👍Login Success
+            👍 Login Success
           </h2>
         ) : (
           <div className="w-80 flex flex-col gap-4 rounded-lg p-4">
             <h1 className="text-center leading-normal text-white font-medium text-3xl mb-6">
-              Welcome to <br /> proleverage
+              Welcome to <br /> Proleverage
             </h1>
             {showOTP ? (
               <>
@@ -100,8 +113,8 @@ const App = () => {
                   otpType="number"
                   disabled={false}
                   autoFocus
-                  className="opt-container "
-                ></OtpInput>
+                  className="opt-container"
+                />
                 <button
                   onClick={onOTPVerify}
                   className="bg-emerald-600 w-full flex gap-1 items-center justify-center py-2.5 text-white rounded"
