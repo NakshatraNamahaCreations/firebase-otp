@@ -91,7 +91,7 @@ const CombinedComponent = () => {
           <div className="row mt-3 mb-4" style={{ justifyContent: "center" }}>
             <div className="col-md-2">
               {/* <Link to="/asin-code" style={{ textDecoration: "none" }}> */}
-              <Link to="/" style={{ textDecoration: "none" }}>
+              <Link to="/asin-code" style={{ textDecoration: "none" }}>
                 <div
                   className="poppins-regular"
                   style={{

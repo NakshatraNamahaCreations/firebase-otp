@@ -10,21 +10,21 @@ function Signup() {
   const submit = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !password) {
+    if (!name || !email || !phoneNumber) {
       alert("All fields are required");
       return;
     }
 
     try {
       const config = {
-        url: "/users/auth/register",
+        url: "/users/auth/firebaseregister",
         method: "post",
         baseURL: "https://api.proleverageadmin.in/api",
         headers: { "Content-Type": "application/json" },
         data: {
           name,
           email,
-          password,
+
           phoneNumber,
         },
       };
@@ -36,7 +36,7 @@ function Signup() {
 
         localStorage.setItem("userToken", res.data.token);
 
-        localStorage.setItem("user", JSON.stringify(res.data.user));
+        // localStorage.setItem("user", JSON.stringify(res.data.user));
         window.location.assign("/login");
 
         alert("Registered successfully");
@@ -54,7 +54,7 @@ function Signup() {
 
   return (
     <div className="container">
-      <div className="row mt-2 col-md-12 justify-content-center">
+      <div className="row mt-5 col-md-12 justify-content-center">
         <div className="col-md-4">
           <div className="d-flex justify-content-center">
             <a className="navbar-brand" to="/">
@@ -95,15 +95,6 @@ function Signup() {
               placeholder="Please Enter Mobilenumber"
               className="input_box"
               onChange={(e) => setphoneNumber(e.target.value)}
-            />
-          </div>
-          <div className="mt-3">
-            <div className="label">Password</div>
-            <input
-              type="text"
-              placeholder="Please Enter Password"
-              className="input_box"
-              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 

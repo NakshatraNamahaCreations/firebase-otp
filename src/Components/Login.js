@@ -68,7 +68,7 @@ const Login = () => {
 
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("phoneNumber", phoneNumber);
-
+      window.location.assign("/asin-code");
       setUser(response.data);
       setLoading(false);
     } catch (error) {
