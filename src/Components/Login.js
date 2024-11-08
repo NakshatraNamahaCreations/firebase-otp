@@ -1,86 +1,156 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Form, Alert } from "react-bootstrap";
-import { Button } from "react-bootstrap";
-import GoogleButton from "react-google-button";
-import { useUserAuth } from "../context/UserAuthContext";
+import { BsFillShieldLockFill, BsTelephoneFill } from "react-icons/bs";
+import { CgSpinner } from "react-icons/cg";
+
+import OtpInput from "otp-input-react";
+import { useState } from "react";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import { auth } from "../firebase.config";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { toast, Toaster } from "react-hot-toast";
+import axios from "axios";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const { logIn, googleSignIn } = useUserAuth();
-  const navigate = useNavigate();
+  const [otp, setOtp] = useState("");
+  const [ph, setPh] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    try {
-      await logIn(email, password);
-      navigate("/home");
-    } catch (err) {
-      setError(err.message);
+  function onCaptchVerify() {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: (response) => {
+            onSignup();
+          },
+          "expired-callback": () => {},
+        },
+        auth
+      );
     }
-  };
+  }
 
-  const handleGoogleSignIn = async (e) => {
-    e.preventDefault();
+  function onSignup() {
+    setLoading(true);
+    onCaptchVerify();
+
+    const appVerifier = window.recaptchaVerifier;
+
+    const formatPh = "+" + ph;
+
+    signInWithPhoneNumber(auth, formatPh, appVerifier)
+      .then((confirmationResult) => {
+        window.confirmationResult = confirmationResult;
+        setLoading(false);
+        setShowOTP(true);
+        toast.success("OTP sended successfully!");
+      })
+      .catch((error) => {
+        console.log(error);
+        setLoading(false);
+      });
+  }
+
+  async function onOTPVerify() {
+    setLoading(true);
     try {
-      await googleSignIn();
-      navigate("/home");
+      const result = await window.confirmationResult.confirm(otp);
+      const { phoneNumber } = result.user;
+
+      // Call your backend to authenticate
+      const response = await axios.post(
+        "https://api.proleverageadmin.in/api/users/auth/firebaseregister",
+        { phoneNumber }
+      );
+
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("phoneNumber", phoneNumber);
+      window.location.assign("/asin-code");
+      setUser(response.data);
+      setLoading(false);
     } catch (error) {
-      console.log(error.message);
+      console.error(error);
+      setLoading(false);
+      window.location.assign("/signup");
+      toast.error("Invalid OTP");
     }
-  };
+  }
 
   return (
-    <>
-      <div className="p-4 box">
-        <h2 className="mb-3">Firebase Auth Login</h2>
-        {error && <Alert variant="danger">{error}</Alert>}
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3" controlId="formBasicEmail">
-            <Form.Control
-              type="email"
-              placeholder="Email address"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Form.Group>
+    <section className="bg-emerald-500 flex items-center justify-center h-screen">
+      <div>
+        <Toaster toastOptions={{ duration: 4000 }} />
+        <div id="recaptcha-container"></div>
+        {user ? (
+          <h2 className="text-center text-white font-medium text-2xl">
+            👍Login Success
+          </h2>
+        ) : (
+          <div className="w-80 flex flex-col gap-4 rounded-lg p-4">
+            <h1 className="text-center leading-normal text-white font-medium text-3xl mb-6">
+              Welcome to <br /> proleverage
+            </h1>
+            {showOTP ? (
+              <>
+                <div className="bg-white text-emerald-500 w-fit mx-auto p-4 rounded-full">
+                  <BsFillShieldLockFill size={30} />
+                </div>
+                <label
+                  htmlFor="otp"
+                  className="font-bold text-xl text-white text-center"
+                >
+                  Enter your OTP
+                </label>
+                <OtpInput
+                  value={otp}
+                  onChange={setOtp}
+                  OTPLength={6}
+                  otpType="number"
+                  disabled={false}
+                  autoFocus
+                  className="opt-container "
+                ></OtpInput>
+                <button
+                  onClick={onOTPVerify}
+                  className="bg-emerald-600 w-full flex gap-1 items-center justify-center py-2.5 text-white rounded"
+                >
+                  {loading && (
+                    <CgSpinner size={20} className="mt-1 animate-spin" />
+                  )}
+                  <span>Verify OTP</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="bg-white text-emerald-500 w-fit mx-auto p-4 rounded-full">
+                  <BsTelephoneFill size={30} />
+                </div>
+                <label
+                  htmlFor=""
+                  className="font-bold text-xl text-white text-center"
+                >
+                  Verify your phone number
+                </label>
+                <PhoneInput country={"in"} value={ph} onChange={setPh} />
 
-          <Form.Group className="mb-3" controlId="formBasicPassword">
-            <Form.Control
-              type="password"
-              placeholder="Password"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Form.Group>
-
-          <div className="d-grid gap-2">
-            <Button variant="primary" type="Submit">
-              Log In
-            </Button>
+                <button
+                  onClick={onSignup}
+                  className="bg-emerald-600 w-full flex gap-1 items-center justify-center py-2.5 text-white rounded"
+                >
+                  {loading && (
+                    <CgSpinner size={20} className="mt-1 animate-spin" />
+                  )}
+                  <span>Send OTP</span>
+                </button>
+              </>
+            )}
           </div>
-        </Form>
-        <hr />
-        <div>
-          <GoogleButton
-            className="g-btn"
-            type="dark"
-            onClick={handleGoogleSignIn}
-          />
-        </div>
-        <Link to="/phonesignup">
-          <div className="d-grid gap-2 mt-3">
-            <Button variant="success" type="Submit">
-              Sign in with Phone
-            </Button>
-          </div>
-        </Link>
+        )}
       </div>
-      <div className="p-4 box mt-3 text-center">
-        Don't have an account? <Link to="/signup">Sign up</Link>
-      </div>
-    </>
+    </section>
   );
 };
 
